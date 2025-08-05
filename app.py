@@ -149,14 +149,28 @@ def login():
 
 @app.route("/callback")
 def callback():
-    sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
-                            client_secret=CLIENT_SECRET,
-                            redirect_uri=REDIRECT_URI,
-                            scope=SCOPE,
-                            cache_path=".cache")
+    sp_oauth = SpotifyOAuth(
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        redirect_uri=REDIRECT_URI,
+        scope=SCOPE,
+        cache_path=".cache"
+    )
 
     code = request.args.get('code')
-    token_info = sp_oauth.get_access_token(code)
+    error = request.args.get('error')
+    
+    if error:
+        return f"Error during authentication: {error}"
+    
+    if not code:
+        return "Authorization code not found. Please try to login again."
+
+    # בקשה לטוקן עם הדור החדש של spotipy (מומלץ להעביר check_cache=False)
+    token_info = sp_oauth.get_access_token(code, check_cache=False)
+
+    if not token_info:
+        return "Failed to get access token. Please try again."
 
     session['token_info'] = token_info
     return redirect(url_for('index'))
