@@ -1,0 +1,20 @@
+﻿<!DOCTYPE html>
+<html lang="he">
+<head>
+    <meta charset="UTF-8" />
+    <title>רקעים שנוצרו</title>
+</head>
+<body style="direction: rtl; font-family: Arial, sans-serif;">
+    <h1>רקעים שנוצרו</h1>
+    <a href="{{ url_for('index') }}">חזרה לעמוד הבית</a>
+    <div style="display:flex; flex-wrap: wrap;">
+        {% for file in files %}
+        <div style="margin: 10px;">
+            <img src="{{ url_for('wallpapers', filename=file) }}" alt="Wallpaper" style="width:200px; height:auto; border:1px solid #ccc;" />
+            <p>{{ file }}</p>
+            <a href="{{ url_for('wallpapers', filename=file) }}" download>הורד</a>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
