@@ -1,0 +1,4 @@
+﻿Flask
+spotipy
+Pillow
+requests

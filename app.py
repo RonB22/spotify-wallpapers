@@ -1,4 +1,4 @@
-import os
+﻿import os
 import shutil
 import time
 import random
@@ -11,9 +11,9 @@ app = Flask(__name__)
 app.secret_key = "supersecretkey"  # תשנה למשהו חזק בפרודקשן!
 
 # הגדרות Spotify OAuth
-CLIENT_ID = "b67d81317a4649fda40a518583d83a20"
-CLIENT_SECRET = "f29e05b65aed4f188de91acbda2b7a27"
-REDIRECT_URI = "https://spotify-wallpapers-production.up.railway.app/callback"
+CLIENT_ID = os.getenv("SPOTIPY_CLIENT_ID")
+CLIENT_SECRET = os.getenv("SPOTIPY_CLIENT_SECRET")
+REDIRECT_URI = os.getenv("SPOTIPY_REDIRECT_URI", "http://127.0.0.1:5000/callback")
 # REDIRECT_URI = "http://127.0.0.1:5000/callback"
 SCOPE = "user-library-read"
 
