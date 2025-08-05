@@ -12,7 +12,7 @@
         body {
             font-family: 'Arial', sans-serif;
             background: #121212;
-            color: #1DB954; /* ירוק ספוטיפיי */
+            color: #1DB954;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -44,11 +44,11 @@
             cursor: pointer;
         }
 
-            a button:hover {
-                background-color: #1ed760;
-                box-shadow: 0 6px 20px rgba(30, 215, 96, 0.8);
-                transform: translateY(-3px);
-            }
+        a button:hover {
+            background-color: #1ed760;
+            box-shadow: 0 6px 20px rgba(30, 215, 96, 0.8);
+            transform: translateY(-3px);
+        }
 
         a {
             text-decoration: none;
@@ -56,7 +56,6 @@
             margin: 10px 0;
         }
 
-        /* אנימציית טעינה */
         #loading-overlay {
             position: fixed;
             top: 0;
@@ -73,10 +72,10 @@
             transition: opacity 0.3s ease;
         }
 
-            #loading-overlay.active {
-                visibility: visible;
-                opacity: 1;
-            }
+        #loading-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
 
         .spinner {
             border: 6px solid #1DB954;
@@ -88,16 +87,10 @@
         }
 
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        /* התראות */
         #notification {
             position: fixed;
             top: 20px;
@@ -115,12 +108,11 @@
             z-index: 10000;
         }
 
-            #notification.show {
-                opacity: 1;
-                pointer-events: auto;
-            }
+        #notification.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
 
-        /* רספונסיביות */
         @media (max-width: 480px) {
             body {
                 padding: 15px;
@@ -146,10 +138,10 @@
     <h1>ברוך הבא ל-Spotify Wallpapers</h1>
 
     {% if logged_in %}
-    <p>אתה מחובר! לחץ למטה כדי להוריד עטיפות וליצור רקעים:</p>
+    <p>אתה מחובר! בחר אלבומים שברצונך לשלב ברקע שלך:</p>
 
-    <a href="{{ url_for('generate') }}">
-        <button id="generate-btn">צור רקעים</button>
+    <a href="{{ url_for('select_albums') }}">
+        <button id="generate-btn">בחר אלבומים ליצירת רקעים</button>
     </a>
     <br />
     <a href="{{ url_for('show_wallpapers') }}">
@@ -163,12 +155,10 @@
     </a>
     {% endif %}
 
-    <!-- אנימציית טעינה -->
     <div id="loading-overlay">
         <div class="spinner"></div>
     </div>
 
-    <!-- התראה -->
     <div id="notification"></div>
 
     <script>
@@ -177,16 +167,11 @@
         const generateBtn = document.getElementById('generate-btn');
 
         if (generateBtn) {
-            generateBtn.addEventListener('click', function(event) {
-                // הצג אנימציית טעינה
+            generateBtn.addEventListener('click', function () {
                 loadingOverlay.classList.add('active');
-
-                // אפשר להוסיף כאן טיפול במצב טעינה אמיתי (fetch / Ajax)
-                // או להסתיר את האנימציה אחרי זמן מסוים אם צריך
             });
         }
 
-        // פונקציה להצגת התראה עם טקסט ומחיקה אוטומטית אחרי 3 שניות
         function showNotification(message) {
             notification.textContent = message;
             notification.classList.add('show');
@@ -196,8 +181,8 @@
             }, 3000);
         }
 
-        // דוגמה - הצג הודעה אם רוצים:
-        // showNotification("אתה מחובר לחשבון הספוטיפיי, הרקעים נוצרו בהצלחה!");
+        // דוגמה:
+        // showNotification("התחברת בהצלחה!");
     </script>
 
 </body>

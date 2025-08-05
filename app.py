@@ -6,6 +6,8 @@ from flask import Flask, redirect, request, session, url_for, render_template, s
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from PIL import Image
+import requests  # ← דרוש להורדת תמונות לפי URL
+from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"  # תשנה למשהו חזק בפרודקשן!
@@ -106,6 +108,25 @@ def generate_collages(number=5):
         canvas.save(output_path)
 
     return number
+def get_saved_albums(sp, limit=50):
+    albums = []
+    offset = 0
+
+    while True:
+        results = sp.current_user_saved_albums(limit=limit, offset=offset)
+        items = results['items']
+        if not items:
+            break
+
+        for item in items:
+            album = item['album']
+            name = album['name']
+            image_url = album['images'][0]['url']
+            albums.append({"name": name, "image_url": image_url})
+
+        offset += limit
+
+    return albums
 
 # Flask routes
 
@@ -171,6 +192,41 @@ def show_wallpapers():
     files = [f for f in files if f.endswith(".jpg") or f.endswith(".png")]
 
     return render_template("wallpapers.html", files=files)
+
+
+# ← route חדש: עמוד בחירת אלבומים
+@app.route("/select")
+def select_albums():
+    token_info = session.get('token_info')
+    if not token_info:
+        return redirect(url_for('index'))
+
+    sp = spotipy.Spotify(auth=token_info['access_token'])
+    albums = get_saved_albums(sp)
+    return render_template("select_albums.html", albums=albums)
+
+
+# ← route חדש: יצירת רקעים מאלבומים נבחרים
+@app.route("/generate_from_selection", methods=["POST"])
+def generate_from_selection():
+    selected_urls = request.form.getlist("selected_albums")
+    if not selected_urls:
+        return "לא נבחרו אלבומים."
+
+    clear_folder(ALBUM_FOLDER)
+    clear_folder(WALLPAPER_FOLDER)
+
+    for idx, url in enumerate(selected_urls):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            image = Image.open(BytesIO(response.content)).resize((COVER_SIZE, COVER_SIZE))
+            image.save(os.path.join(ALBUM_FOLDER, f"album_{idx}.jpg"))
+        except Exception as e:
+            print(f"שגיאה בהורדת תמונה: {e}")
+
+    generate_collages()
+    return redirect(url_for("show_wallpapers"))
 
 
 
