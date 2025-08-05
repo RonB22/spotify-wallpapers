@@ -1,4 +1,4 @@
-﻿import os
+import os
 import shutil
 import time
 import random
@@ -13,7 +13,8 @@ app.secret_key = "supersecretkey"  # תשנה למשהו חזק בפרודקשן
 # הגדרות Spotify OAuth
 CLIENT_ID = "b67d81317a4649fda40a518583d83a20"
 CLIENT_SECRET = "f29e05b65aed4f188de91acbda2b7a27"
-REDIRECT_URI = "http://127.0.0.1:5000/callback"
+REDIRECT_URI = "https://spotify-wallpapers-production.up.railway.app/callback"
+# REDIRECT_URI = "http://127.0.0.1:5000/callback"
 SCOPE = "user-library-read"
 
 ALBUM_FOLDER = "album_covers"
@@ -171,5 +172,8 @@ def show_wallpapers():
 
     return render_template("wallpapers.html", files=files)
 
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
