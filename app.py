@@ -1,4 +1,5 @@
-﻿import os
+﻿
+import os
 import shutil
 import time
 import random
@@ -6,17 +7,15 @@ from flask import Flask, redirect, request, session, url_for, render_template, s
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 from PIL import Image
-import requests  # ← דרוש להורדת תמונות לפי URL
+import requests
 from io import BytesIO
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey"  # תשנה למשהו חזק בפרודקשן!
+app.secret_key = "supersecretkey"
 
-# הגדרות Spotify OAuth
 CLIENT_ID = os.getenv("SPOTIPY_CLIENT_ID")
 CLIENT_SECRET = os.getenv("SPOTIPY_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("SPOTIPY_REDIRECT_URI", "http://127.0.0.1:5000/callback")
-# REDIRECT_URI = "http://127.0.0.1:5000/callback"
 SCOPE = "user-library-read"
 
 ALBUM_FOLDER = "album_covers"
@@ -25,19 +24,31 @@ WALLPAPER_FOLDER = "static/wallpapers"
 WIDTH, HEIGHT = 1290, 2796
 COVER_SIZE = 300
 
-# פונקציות עזר
-
 def clear_folder(folder_path):
     if os.path.exists(folder_path):
         shutil.rmtree(folder_path)
     os.makedirs(folder_path)
 
+def get_spotify_client():
+    token_info = session.get("token_info", None)
+    if not token_info:
+        return None
+
+    sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
+                            client_secret=CLIENT_SECRET,
+                            redirect_uri=REDIRECT_URI,
+                            scope=SCOPE,
+                            cache_path=".cache")
+
+    if sp_oauth.is_token_expired(token_info):
+        token_info = sp_oauth.refresh_access_token(token_info['refresh_token'])
+        session['token_info'] = token_info
+
+    return spotipy.Spotify(auth=token_info['access_token'])
+
 def download_album_covers(sp):
     clear_folder(ALBUM_FOLDER)
-
-    limit = 50
-    offset = 0
-    total_downloaded = 0
+    limit, offset, total_downloaded = 50, 0, 0
 
     while True:
         results = sp.current_user_saved_albums(limit=limit, offset=offset)
@@ -50,7 +61,6 @@ def download_album_covers(sp):
             name = album['name'].replace('/', '-')
             artist = album['artists'][0]['name'].replace('/', '-')
             image_url = album['images'][0]['url']
-
             filename = f"{artist} - {name}.jpg"
             path = os.path.join(ALBUM_FOLDER, filename)
 
@@ -82,18 +92,16 @@ def load_album_covers():
 
 def generate_collages(number=5):
     clear_folder(WALLPAPER_FOLDER)
-
     covers = load_album_covers()
     cols = WIDTH // COVER_SIZE
     rows = HEIGHT // COVER_SIZE
     max_covers = cols * rows
 
-    if len(covers) == 0:
+    if not covers:
         return 0
 
     if len(covers) < max_covers:
-        multiplier = (max_covers // len(covers)) + 1
-        covers *= multiplier
+        covers *= (max_covers // len(covers)) + 1
 
     for i in range(1, number + 1):
         canvas = Image.new("RGB", (WIDTH, HEIGHT), (0, 0, 0))
@@ -104,38 +112,28 @@ def generate_collages(number=5):
             y = (idx // cols) * COVER_SIZE
             canvas.paste(covers[idx], (x, y))
 
-        output_path = os.path.join(WALLPAPER_FOLDER, f"wallpaper_{i}.jpg")
-        canvas.save(output_path)
+        canvas.save(os.path.join(WALLPAPER_FOLDER, f"wallpaper_{i}.jpg"))
 
     return number
-def get_saved_albums(sp, limit=50):
-    albums = []
-    offset = 0
 
+def get_saved_albums(sp, limit=50):
+    albums, offset = [], 0
     while True:
         results = sp.current_user_saved_albums(limit=limit, offset=offset)
         items = results['items']
         if not items:
             break
-
         for item in items:
             album = item['album']
             name = album['name']
             image_url = album['images'][0]['url']
             albums.append({"name": name, "image_url": image_url})
-
         offset += limit
-
     return albums
-
-# Flask routes
 
 @app.route("/")
 def index():
-    if "token_info" in session:
-        return render_template("index.html", logged_in=True)
-    else:
-        return render_template("index.html", logged_in=False)
+    return render_template("index.html", logged_in="token_info" in session)
 
 @app.route("/login")
 def login():
@@ -144,53 +142,39 @@ def login():
                             redirect_uri=REDIRECT_URI,
                             scope=SCOPE,
                             cache_path=".cache")
-    auth_url = sp_oauth.get_authorize_url()
-    return redirect(auth_url)
+    return redirect(sp_oauth.get_authorize_url())
 
 @app.route("/callback")
 def callback():
-    sp_oauth = SpotifyOAuth(
-        client_id=CLIENT_ID,
-        client_secret=CLIENT_SECRET,
-        redirect_uri=REDIRECT_URI,
-        scope=SCOPE,
-        cache_path=".cache"
-    )
-
+    sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
+                            client_secret=CLIENT_SECRET,
+                            redirect_uri=REDIRECT_URI,
+                            scope=SCOPE,
+                            cache_path=".cache")
     code = request.args.get('code')
     error = request.args.get('error')
-    
     if error:
         return f"Error during authentication: {error}"
-    
     if not code:
         return "Authorization code not found. Please try to login again."
 
-    # בקשה לטוקן עם הדור החדש של spotipy (מומלץ להעביר check_cache=False)
     token_info = sp_oauth.get_access_token(code, check_cache=False)
-
     if not token_info:
         return "Failed to get access token. Please try again."
-
     session['token_info'] = token_info
     return redirect(url_for('index'))
 
 @app.route("/generate")
 def generate():
-    token_info = session.get('token_info', None)
-    if not token_info:
+    sp = get_spotify_client()
+    if not sp:
         return redirect(url_for('index'))
-
-    sp = spotipy.Spotify(auth=token_info['access_token'])
 
     total = download_album_covers(sp)
     if total == 0:
         return "לא נמצאו עטיפות אלבומים."
-
-    count = generate_collages()
-    if count == 0:
+    if generate_collages() == 0:
         return "אירעה שגיאה ביצירת קולאז'ים."
-
     return redirect(url_for('show_wallpapers'))
 
 @app.route("/wallpapers/<filename>")
@@ -201,26 +185,17 @@ def wallpapers(filename):
 def show_wallpapers():
     if not os.path.exists(WALLPAPER_FOLDER):
         return "לא נוצרו רקעים עדיין."
-
-    files = os.listdir(WALLPAPER_FOLDER)
-    files = [f for f in files if f.endswith(".jpg") or f.endswith(".png")]
-
+    files = [f for f in os.listdir(WALLPAPER_FOLDER) if f.endswith((".jpg", ".png"))]
     return render_template("wallpapers.html", files=files)
 
-
-# ← route חדש: עמוד בחירת אלבומים
 @app.route("/select")
 def select_albums():
-    token_info = session.get('token_info')
-    if not token_info:
-        return redirect(url_for('index'))
-
-    sp = spotipy.Spotify(auth=token_info['access_token'])
+    sp = get_spotify_client()
+    if not sp:
+        return redirect(url_for("index"))
     albums = get_saved_albums(sp)
     return render_template("select_albums.html", albums=albums)
 
-
-# ← route חדש: יצירת רקעים מאלבומים נבחרים
 @app.route("/generate_from_selection", methods=["POST"])
 def generate_from_selection():
     selected_urls = request.form.getlist("selected_albums")
@@ -241,8 +216,6 @@ def generate_from_selection():
 
     generate_collages()
     return redirect(url_for("show_wallpapers"))
-
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
